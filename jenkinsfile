@@ -1,49 +1,26 @@
-podTemplate(label: 'mypod', containers: [
-    containerTemplate(name: 'git', image: 'alpine/git', ttyEnabled: true, command: 'cat'),
-    containerTemplate(name: 'maven', image: 'maven:3.3.9-jdk-8-alpine', command: 'cat', ttyEnabled: true),
-    containerTemplate(name: 'docker', image: 'docker', command: 'cat', ttyEnabled: true ,envVars: [containerEnvVar(key: 'DOCKER_OPTS', value: '--insecure-registry="minikube.do:5000"')]),
-     containerTemplate(name: 'kubectl', image: 'lachlanevenson/k8s-kubectl', command: 'cat', ttyEnabled: true),
+pipeline {
+agent any
+stages{
+stage('clone and clean repo'){
+steps {
+cleanWs()
+bat "git clone https://github.com/Moetez-abidi/testjenk/"
+bat "mvn clean -f testjenk"
+}
 
-  ],
-  volumes: [
-    hostPathVolume(mountPath: '/var/run/docker.sock', hostPath: '/var/run/docker.sock'),
-    hostPathVolume(mountPath: '/.kube/config', hostPath: '/etc/kubernetes/admin.conf'),
-  ]
-  ) {
-      node('mypod'){
-	    stage('Initialization'){
-		sh'echo "${WORKSPACE}"'
-		cleanWs()
-		}
-		stage('Git checkout'){
-		container('git'){
-		git credentialsId: 'bouda', url: 'https://github.com/MedHammedi/CI-Project'
-		
-		}
-		}
-		stage('build'){
-		//second test
-		container('maven'){
-		sh 'mvn clean install'
-		}
-		
-		}
-		stage('docker'){
-		container('docker'){
-		//sh'docker build . -t nexus.do/demo:latest'
-		//sh 'docker login nexus.do --username=admin --password=admin123'
-		//sh 'docker push nexus.do/demo:latest'
-		}
-		}
-		
-		stage('deployment'){
-		container('kubectl'){
-		//sh'kubectl apply -f bouda-deploy.yaml'
-		//sh 'kubectl expose deployment bouda --type=NodePort --port=8080 -n dev'
-		}
-		}
-	  
-	  
-	  
-	    }
-	  }
+}
+stage('Test'){
+
+steps{ bat "mvn clean install -f testjenk"
+}}
+stage('Deploy'){
+steps {
+
+bat "mvn package -f testjenk"
+bat "mvn deploy -f testjenk"
+bat "mvn sonar:sonar -f testjenk"
+}
+
+}
+}
+}
